@@ -1,0 +1,6 @@
+{
+  "name": "Nalinam Boutique",
+  "description": "Mobile-first Indian e-commerce boutique specializing in Sarees, Salwars, Lehengas, Fusion wear & ethnic accessories with Tamil Nadu heritage aesthetics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
