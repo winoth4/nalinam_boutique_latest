@@ -34,6 +34,7 @@ interface AdminDashboardProps {
   onAddProduct: (product: Omit<Product, 'id'>) => void;
   onUpdateProduct: (product: Product) => void;
   onDeleteProduct: (id: number) => void;
+  onResetCatalog?: () => void;
   orders: Order[];
   onUpdateOrderStatus: (orderId: string, status: Order['status'], courier?: string, tracking?: string) => void;
   appointments: VideoCallAppointment[];
@@ -49,6 +50,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onAddProduct,
   onUpdateProduct,
   onDeleteProduct,
+  onResetCatalog,
   orders,
   onUpdateOrderStatus,
   appointments,
@@ -254,6 +256,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </h2>
                 <span className="bg-amber-400/20 text-amber-300 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border border-amber-400/30">
                   நளினம் Store Manager
+                </span>
+                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-400/30 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Persistent Storage Active
                 </span>
               </div>
               <p className="text-[11px] text-purple-200/80">
@@ -480,13 +485,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 </div>
 
-                <button
-                  onClick={() => setIsAddProductModalOpen(true)}
-                  className="bg-purple-950 hover:bg-purple-900 text-amber-300 font-bold text-xs py-2.5 px-4 rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add New Saree / Outfit</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  {onResetCatalog && (
+                    <button
+                      onClick={onResetCatalog}
+                      title="Reset inventory to original default sarees and prices"
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs py-2.5 px-3 rounded-xl border border-gray-300 flex items-center gap-1 transition-all"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Reset Catalog</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsAddProductModalOpen(true)}
+                    className="bg-purple-950 hover:bg-purple-900 text-amber-300 font-bold text-xs py-2.5 px-4 rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add New Saree / Outfit</span>
+                  </button>
+                </div>
               </div>
 
               {/* Products Grid */}

@@ -85,6 +85,62 @@ Respond ONLY with valid JSON.`;
   }
 });
 
+// In-memory server persistence store
+let serverProductsStore: any[] | null = null;
+let serverOrdersStore: any[] = [];
+let serverAppointmentsStore: any[] = [];
+
+// Products API
+app.get('/api/products', (_req, res) => {
+  res.json(serverProductsStore || []);
+});
+
+app.put('/api/products', (req, res) => {
+  if (Array.isArray(req.body)) {
+    serverProductsStore = req.body;
+    return res.json({ success: true, count: serverProductsStore.length });
+  }
+  return res.status(400).json({ error: 'Expected array of products' });
+});
+
+// Orders API
+app.get('/api/orders', (_req, res) => {
+  res.json(serverOrdersStore);
+});
+
+app.post('/api/orders', (req, res) => {
+  if (Array.isArray(req.body)) {
+    serverOrdersStore = req.body;
+  } else if (req.body && req.body.id) {
+    const existingIndex = serverOrdersStore.findIndex((o) => o.id === req.body.id);
+    if (existingIndex >= 0) {
+      serverOrdersStore[existingIndex] = req.body;
+    } else {
+      serverOrdersStore.unshift(req.body);
+    }
+  }
+  res.json({ success: true, orders: serverOrdersStore });
+});
+
+// Appointments API
+app.get('/api/appointments', (_req, res) => {
+  res.json(serverAppointmentsStore);
+});
+
+app.post('/api/appointments', (req, res) => {
+  if (Array.isArray(req.body)) {
+    serverAppointmentsStore = req.body;
+  } else if (req.body && req.body.id) {
+    const existingIndex = serverAppointmentsStore.findIndex((a) => a.id === req.body.id);
+    if (existingIndex >= 0) {
+      serverAppointmentsStore[existingIndex] = req.body;
+    } else {
+      serverAppointmentsStore.unshift(req.body);
+    }
+  }
+  res.json({ success: true, appointments: serverAppointmentsStore });
+});
+
 // Pincode lookup API
 app.get('/api/pincode/:code', (req, res) => {
   const code = req.params.code;

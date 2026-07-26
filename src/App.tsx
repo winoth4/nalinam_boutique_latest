@@ -30,7 +30,20 @@ import {
 import { lookupPincode } from './data/pincodes';
 
 export default function App() {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  // 1. Products state with localStorage persistence
+  const [products, setProducts] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('nalinam_products');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+        console.error('Failed to load products from localStorage:', e);
+      }
+    }
+    return INITIAL_PRODUCTS;
+  });
+
   const [activeCategory, setActiveCategory] = useState<ProductCategory | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -48,18 +61,47 @@ export default function App() {
     sortBy: 'popularity'
   });
 
-  // Shopping Bag & Wishlist
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      product: INITIAL_PRODUCTS[0],
-      selectedStitching: 'Unstitched',
-      quantity: 1
+  // Shopping Bag & Wishlist with localStorage persistence
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    const saved = localStorage.getItem('nalinam_cart');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
     }
-  ]);
-  const [wishlist, setWishlist] = useState<Product[]>([INITIAL_PRODUCTS[1]]);
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+    return [
+      {
+        product: INITIAL_PRODUCTS[0],
+        selectedStitching: 'Unstitched',
+        quantity: 1
+      }
+    ];
+  });
 
-  // Video Call Appointments State
+  const [wishlist, setWishlist] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('nalinam_wishlist');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return [INITIAL_PRODUCTS[1]];
+  });
+
+  const [recentOrders, setRecentOrders] = useState<Order[]>(() => {
+    const saved = localStorage.getItem('nalinam_orders');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return [];
+  });
+
+  // Video Call Appointments State with persistence
   const [videoCallAppointments, setVideoCallAppointments] = useState<VideoCallAppointment[]>(() => {
     const saved = localStorage.getItem('nalinam_video_call_appointments');
     if (saved) {
@@ -96,10 +138,103 @@ export default function App() {
     ];
   });
 
-  // Persist video call appointments to localStorage
+  // Sync Products to localStorage and API
+  useEffect(() => {
+    localStorage.setItem('nalinam_products', JSON.stringify(products));
+    fetch('/api/products', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(products)
+    }).catch(() => {});
+  }, [products]);
+
+  // Sync Cart to localStorage
+  useEffect(() => {
+    localStorage.setItem('nalinam_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  // Sync Wishlist to localStorage
+  useEffect(() => {
+    localStorage.setItem('nalinam_wishlist', JSON.stringify(wishlist));
+  }, [wishlist]);
+
+  // Sync Orders to localStorage and API
+  useEffect(() => {
+    localStorage.setItem('nalinam_orders', JSON.stringify(recentOrders));
+    if (recentOrders.length > 0) {
+      fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(recentOrders)
+      }).catch(() => {});
+    }
+  }, [recentOrders]);
+
+  // Sync Appointments to localStorage and API
   useEffect(() => {
     localStorage.setItem('nalinam_video_call_appointments', JSON.stringify(videoCallAppointments));
+    fetch('/api/appointments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(videoCallAppointments)
+    }).catch(() => {});
   }, [videoCallAppointments]);
+
+  // Initial Fetch from server API on mount if server has updated records
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setProducts(data);
+          localStorage.setItem('nalinam_products', JSON.stringify(data));
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/orders')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setRecentOrders(data);
+          localStorage.setItem('nalinam_orders', JSON.stringify(data));
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/appointments')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setVideoCallAppointments(data);
+          localStorage.setItem('nalinam_video_call_appointments', JSON.stringify(data));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Listen for storage changes across tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'nalinam_products' && e.newValue) {
+        try {
+          setProducts(JSON.parse(e.newValue));
+        } catch (err) {}
+      }
+      if (e.key === 'nalinam_orders' && e.newValue) {
+        try {
+          setRecentOrders(JSON.parse(e.newValue));
+        } catch (err) {}
+      }
+      if (e.key === 'nalinam_video_call_appointments' && e.newValue) {
+        try {
+          setVideoCallAppointments(JSON.parse(e.newValue));
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const handleNewVideoCallRequest = (apt: VideoCallAppointment) => {
     setVideoCallAppointments((prev) => [apt, ...prev]);
@@ -370,6 +505,18 @@ export default function App() {
 
   const handleDeleteProduct = (productId: number) => {
     setProducts((prev) => prev.filter((p) => p.id !== productId));
+  };
+
+  const handleResetCatalog = () => {
+    if (window.confirm('Are you sure you want to reset all products & prices back to default catalog?')) {
+      localStorage.removeItem('nalinam_products');
+      setProducts(INITIAL_PRODUCTS);
+      fetch('/api/products', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(INITIAL_PRODUCTS)
+      }).catch(() => {});
+    }
   };
 
   const handleUpdateOrderStatus = (
@@ -693,6 +840,7 @@ export default function App() {
         onAddProduct={handleAddProduct}
         onUpdateProduct={handleUpdateProduct}
         onDeleteProduct={handleDeleteProduct}
+        onResetCatalog={handleResetCatalog}
         orders={recentOrders}
         onUpdateOrderStatus={handleUpdateOrderStatus}
         appointments={videoCallAppointments}
